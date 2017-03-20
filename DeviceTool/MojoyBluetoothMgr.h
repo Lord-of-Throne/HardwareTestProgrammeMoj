@@ -7,7 +7,8 @@
 //
 
 #import <Foundation/Foundation.h>
+#import <CoreBluetooth/CoreBluetooth.h>
 
 @interface MojoyBluetoothMgr : NSObject
-
++ (instancetype)shareBlueTooth;
 @end
