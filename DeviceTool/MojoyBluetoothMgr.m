@@ -37,10 +37,26 @@
         
         CBCentralManager *central = [[CBCentralManager alloc] initWithDelegate:self queue:nil options:options];
         self.centralMgr = central;
-
         
+
     }
     return self;
+}
+- (void)startScan{
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self.centralMgr stopScan];
+        [self.centralMgr scanForPeripheralsWithServices:nil options:nil];
+    });
+}
+
+- (void)stopScan{
+    [self.centralMgr stopScan];
+    [self.centralMgr cancelPeripheralConnection:_discoveredPeripheral];
+}
+
+- (void)connectBlueTooth{
+    [self startScan];
+    NSLog(@"开始扫描！");
 }
 
 //检查App的设备BLE是否可用 （ensure that Bluetooth low energy is supported and available to use on the central device）
@@ -49,9 +65,7 @@
     switch (central.state)
     {
         case CBCentralManagerStatePoweredOn:
-            //discover what peripheral devices are available for your app to connect to
-            //第一个参数为CBUUID的数组，需要搜索特点服务的蓝牙设备，只要每搜索到一个符合条件的蓝牙设备都会调用didDiscoverPeripheral代理方法
-            [self.centralMgr scanForPeripheralsWithServices:nil options:nil];
+        [self connectBlueTooth];
             break;
         default:
             NSLog(@"Central Manager did change state");
@@ -79,6 +93,7 @@
     [_discoveredPeripheral setDelegate:self];
     //discover all of the services that a peripheral offers,搜索服务,回调didDiscoverServices
     [_discoveredPeripheral discoverServices:nil];
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"blueConnectSuccess" object:nil];
     NSString *str = [NSString stringWithFormat:@"连接%@成功!",peripheral.name];
 }
 
