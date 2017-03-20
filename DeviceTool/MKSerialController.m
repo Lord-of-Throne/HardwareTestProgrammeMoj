@@ -7,6 +7,7 @@
 //
 
 #import "MKSerialController.h"
+#import "MojoyBluetoothMgr.h"
 
 @interface MKSerialController ()
 
@@ -16,25 +17,87 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+        // Do any additional setup after loading the view from its nib.
      self.view.backgroundColor = [UIColor colorWithWhite:0.858 alpha:1.000];
     NSLog(@"codeNum:%@",self.codeNum);
-    // Do any additional setup after loading the view from its nib.
+    MojoyBluetoothMgr *blue = [MojoyBluetoothMgr shareBlueTooth];
+    blue.deviceName = @"mjm-";
+    
+    // 写入新的序列号
+    NSData *newSerial = [self newBluetoothSerialNum];
+    [blue writeChar:newSerial];
+    // 重新连接新的codeNum蓝牙
+    
+    // 比对确认新的序列号是否成功
+    Boolean confirmResult = [self reconfirmSerialNum];
+    // 结果反馈
+    if(confirmResult){
+        // 序列号比对成功
+        NSString *str = @"序列号写入成功\n %@";
+        
+        UIAlertController *alertVc = [UIAlertController alertControllerWithTitle:@"提示" message:str preferredStyle:UIAlertControllerStyleAlert];
+        [alertVc addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:^(UIAlertAction * _Nonnull action) {
+            NSLog(@"点击取消");
+        }]];
+        
+        [alertVc addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+            NSLog(@"点击确认");
+            
+        }]];
+        [self presentViewController:alertVc animated:YES completion:nil];
+    }else{
+        // 序列号比对失败
+        NSString *str = @"序列号写入失败\n %@";
+        
+        UIAlertController *alertVc = [UIAlertController alertControllerWithTitle:@"提示" message:str preferredStyle:UIAlertControllerStyleAlert];
+        [alertVc addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:^(UIAlertAction * _Nonnull action) {
+            NSLog(@"点击取消");
+        }]];
+        
+        [alertVc addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+
+            NSLog(@"点击确认");
+            
+        }]];
+        [self presentViewController:alertVc animated:YES completion:nil];
+    }
+    
 }
 
-- (void)didReceiveMemoryWarning {
-    [super didReceiveMemoryWarning];
-    // Dispose of any resources that can be recreated.
+- (NSData *)newBluetoothSerialNum{
+    // 生成新序列号
+    unsigned char data[1]= {};
+    NSString *name = _codeNum;
+    data[0] = (char)name;
+    NSData *dataB =[NSData dataWithBytes:data length:4];
+    return dataB;
 }
 
+- (bool)reconfirmSerialNum{
+    // 查询序列号
+    NSData *dataA = [self toHexConfrimSerialNumCommandline];
+    
+    // 生成写入前序列号
+    unsigned char data[1]= {};
+    NSString *name = _codeNum;
+    data[0] = (char)name;
+    NSData *dataB =[NSData dataWithBytes:data length:4];
+    // 比对序列号
+    if(dataA != dataB){
+        return false;
+    }else{
+        return true;
+    }
+}
 #pragma mark 生成16进制命令
-- (NSData *)toHexCommandline:(char *)commandLine{
+- (NSData *)toHexConfrimSerialNumCommandline{
     unsigned char data[5]= {};
     
-    int firstNum = (int)strtol(&commandLine[0], NULL, 16);
-    int secondNum = (int)strtol(&commandLine[1], NULL, 16);
-    int thirdNum = (int)strtol(&commandLine[2], NULL, 16);
-    int forthNum = (int)strtol(&commandLine[3], NULL, 16);
-    int fifthNum = (int)strtol(&commandLine[4], NULL, 16);
+    int firstNum = (int)strtol("10", NULL, 16);
+    int secondNum = (int)strtol("00", NULL, 16);
+    int thirdNum = (int)strtol("00", NULL, 16);
+    int forthNum = (int)strtol("00", NULL, 16);
+    int fifthNum = (int)strtol("02", NULL, 16);
     
     printf("%X-%X-%X-%X-%X",firstNum,secondNum,thirdNum,forthNum,fifthNum);
     data[0] = (char)firstNum;
@@ -46,6 +109,15 @@
     NSData *dataB =[NSData dataWithBytes:data length:5];
     return dataB;
 }
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+
+
+
 
 /*
 #pragma mark - Navigation

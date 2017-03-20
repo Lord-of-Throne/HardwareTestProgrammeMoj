@@ -10,5 +10,9 @@
 #import <CoreBluetooth/CoreBluetooth.h>
 
 @interface MojoyBluetoothMgr : NSObject
+
+@property (nonatomic,strong)NSString *deviceName;
+
 + (instancetype)shareBlueTooth;
+- (void)writeChar:(NSData *)data;
 @end
