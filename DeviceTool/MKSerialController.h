@@ -7,7 +7,8 @@
 //
 
 #import <UIKit/UIKit.h>
+#import <CoreBluetooth/CoreBluetooth.h>
 
-@interface MKSerialController : UIViewController
+@interface MKSerialController : UIViewController<CBCentralManagerDelegate,CBPeripheralDelegate>
 @property (nonatomic,strong)NSString *codeNum;
 @end

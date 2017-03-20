@@ -14,5 +14,12 @@
 @property (nonatomic,strong)NSString *deviceName;
 
 + (instancetype)shareBlueTooth;
+
+- (void)connectBlueTooth;
+
+- (void)startScan;
+
+- (void)stopScan;
+
 - (void)writeChar:(NSData *)data;
 @end

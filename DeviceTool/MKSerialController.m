@@ -22,8 +22,12 @@
     NSLog(@"codeNum:%@",self.codeNum);
     MojoyBluetoothMgr *blue = [MojoyBluetoothMgr shareBlueTooth];
     blue.deviceName = @"mjm-";
-    
+
+     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(connectSuccess) name:@"blueConnectSuccess" object:nil];
+}
+- (void)connectSuccess{
     // 写入新的序列号
+    MojoyBluetoothMgr *blue = [MojoyBluetoothMgr shareBlueTooth];
     NSData *newSerial = [self newBluetoothSerialNum];
     [blue writeChar:newSerial];
     // 重新连接新的codeNum蓝牙
@@ -55,15 +59,13 @@
         }]];
         
         [alertVc addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
-
+            
             NSLog(@"点击确认");
             
         }]];
         [self presentViewController:alertVc animated:YES completion:nil];
     }
-    
 }
-
 - (NSData *)newBluetoothSerialNum{
     // 生成新序列号
     unsigned char data[1]= {};
@@ -116,7 +118,9 @@
 }
 
 
-
+- (void)dealloc{
+     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"blueConnectSuccess" object:nil];
+}
 
 
 /*
