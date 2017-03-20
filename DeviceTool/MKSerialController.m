@@ -20,6 +20,7 @@
         // Do any additional setup after loading the view from its nib.
      self.view.backgroundColor = [UIColor colorWithWhite:0.858 alpha:1.000];
     NSLog(@"codeNum:%@",self.codeNum);
+    // 连接默认蓝牙
     MojoyBluetoothMgr *blue = [MojoyBluetoothMgr shareBlueTooth];
     blue.deviceName = @"mjm-";
     
@@ -75,7 +76,8 @@
 
 - (bool)reconfirmSerialNum{
     // 查询序列号
-    NSData *dataA = [self toHexConfrimSerialNumCommandline];
+    NSData *dataA = [self toHexQuerySerialNumCommandline];
+//    [blue writeChar:newSerial];
     
     // 生成写入前序列号
     unsigned char data[1]= {};
@@ -89,8 +91,29 @@
         return true;
     }
 }
-#pragma mark 生成16进制命令
-- (NSData *)toHexConfrimSerialNumCommandline{
+#pragma mark 生成16进制命令-查询序列号
+- (NSData *)toHexQuerySerialNumCommandline{
+    unsigned char data[5]= {};
+    
+    int firstNum = (int)strtol("10", NULL, 16);
+    int secondNum = (int)strtol("00", NULL, 16);
+    int thirdNum = (int)strtol("00", NULL, 16);
+    int forthNum = (int)strtol("00", NULL, 16);
+    int fifthNum = (int)strtol("02", NULL, 16);
+    
+    printf("%X-%X-%X-%X-%X",firstNum,secondNum,thirdNum,forthNum,fifthNum);
+    data[0] = (char)firstNum;
+    data[1] = (char)secondNum;
+    data[2] = (char)thirdNum;
+    data[3] = (char)forthNum;
+    data[4] = (char)fifthNum;
+    
+    NSData *dataB =[NSData dataWithBytes:data length:5];
+    return dataB;
+}
+
+#pragma mark 生成16进制命令-查询序列号
+- (NSData *)toHexEnterQueryStatusCommandline{
     unsigned char data[5]= {};
     
     int firstNum = (int)strtol("10", NULL, 16);
