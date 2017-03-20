@@ -34,6 +34,9 @@
     [self createScanner];
     [self.view insertSubview:[self makeScanCameraShadowViewWithRect:[self makeScanReaderInterrestRect]] atIndex:1];
 }
+- (void)viewDidAppear:(BOOL)animated{
+    [avSession startRunning];
+}
 /*
  扫码框frame
  */

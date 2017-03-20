@@ -495,7 +495,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				DEVELOPMENT_TEAM = N9KXZTAT8L;
 				INFOPLIST_FILE = DeviceTool/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 10.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = monky.DeviceTool;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -508,7 +508,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				DEVELOPMENT_TEAM = N9KXZTAT8L;
 				INFOPLIST_FILE = DeviceTool/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 10.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = monky.DeviceTool;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -584,6 +584,7 @@
 				7DDE10491E7F753C00EF4834 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		7DDE104A1E7F753C00EF4834 /* Build configuration list for PBXNativeTarget "DeviceToolTests" */ = {
 			isa = XCConfigurationList;
@@ -592,6 +593,7 @@
 				7DDE104C1E7F753C00EF4834 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		7DDE104D1E7F753C00EF4834 /* Build configuration list for PBXNativeTarget "DeviceToolUITests" */ = {
 			isa = XCConfigurationList;
@@ -600,6 +602,7 @@
 				7DDE104F1E7F753C00EF4834 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
