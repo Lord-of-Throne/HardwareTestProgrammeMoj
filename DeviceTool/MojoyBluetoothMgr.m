@@ -95,6 +95,8 @@
     [_discoveredPeripheral discoverServices:nil];
 
     NSString *str = [NSString stringWithFormat:@"连接%@成功!",peripheral.name];
+    
+
 }
 
 //连接失败，就会得到回调：
@@ -137,65 +139,63 @@
         [peripheral readValueForCharacteristic:c];
         _writeCharacteristic = c;
     }
+
+    // 订阅特征值后，发出连接成功的通知
     [[NSNotificationCenter defaultCenter] postNotificationName:@"blueConnectSuccess" object:nil];
 }
 
 //订阅的特征值有新的数据时回调
-- (void)peripheral:(CBPeripheral *)peripheral
-didUpdateNotificationStateForCharacteristic:(CBCharacteristic *)characteristic
-             error:(NSError *)error {
+- (void)peripheral:(CBPeripheral *)peripheral didUpdateNotificationStateForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
     if (error) {
         NSLog(@"Error changing notification state: %@",
               [error localizedDescription]);
     }
     
     [peripheral readValueForCharacteristic:characteristic];
-    
 }
 
 // 获取到特征的值时回调
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error
 {
     NSData* midiData = [characteristic value];
-    NSLog(@"Midi data:%@",midiData);
+    NSLog(@"Blue tooth received mididata:%@",midiData);
     NSUInteger len = [midiData length];
     NSUInteger loopCount = len / 5;
     const unsigned char *nsdata_bytes = (unsigned char*)[midiData bytes];
     
-    [[NSNotificationCenter defaultCenter]
-     postNotificationName:@"blueReciveSuccess" object:@{@"reciveData":midiData}];
+    [[NSNotificationCenter defaultCenter]postNotificationName:@"blueReciveSuccess" object:@{@"reciveData":midiData}];
     
-    for (int i = 0; i < loopCount; i++) {
-        unsigned int noteStatus = nsdata_bytes[i*5 + 2];//开始结束标志
-        unsigned int noteValue = nsdata_bytes[i*5 + 3];//音符
-        //        unsigned int noteVelocity = nsdata_bytes[4];//力度
-        if(noteStatus == 128){
-            //note off
-            NSLog(@"Note off");
-            //            BlueTool::getInstance()->receiveMidiEvent(false, noteValue, 0);
-        }else if(noteStatus == 144){
-            //note on
-            NSLog(@"Note on");
-            //            BlueTool::getInstance()->receiveMidiEvent(true, noteValue, 0);
-        }
-        NSLog(@"Note status:%u,note value:%u",noteStatus,noteValue);
-    }
+//    for (int i = 0; i < loopCount; i++) {
+//        unsigned int noteStatus = nsdata_bytes[i*5 + 2];//开始结束标志
+//        unsigned int noteValue = nsdata_bytes[i*5 + 3];//音符
+//        //        unsigned int noteVelocity = nsdata_bytes[4];//力度
+//        if(noteStatus == 128){
+//            //note off
+//            NSLog(@"Note off");
+//            //            BlueTool::getInstance()->receiveMidiEvent(false, noteValue, 0);
+//        }else if(noteStatus == 144){
+//            //note on
+//            NSLog(@"Note on");
+//            //            BlueTool::getInstance()->receiveMidiEvent(true, noteValue, 0);
+//        }
+//        NSLog(@"Note status:%u,note value:%u",noteStatus,noteValue);
+//    }
     
-    NSString *reciveText = [NSString stringWithFormat:@"recive!!!!%X %X %X %X %X",nsdata_bytes[0],nsdata_bytes[1],nsdata_bytes[2],nsdata_bytes[3],nsdata_bytes[4]];
+    NSString *reciveText = [NSString stringWithFormat:@"Bluetooth receive:%X %X %X %X %X",nsdata_bytes[0],nsdata_bytes[1],nsdata_bytes[2],nsdata_bytes[3],nsdata_bytes[4]];
     NSLog(@"%@",reciveText);
 }
 
 #pragma mark 写数据
 - (void)writeChar:(NSData *)data
 {
+    // Log
+    NSLog(@"Blue tooth write data: %@",data);
     //回调didWriteValueForCharacteristic
     [_discoveredPeripheral writeValue:data forCharacteristic:_writeCharacteristic type:CBCharacteristicWriteWithoutResponse];
 }
 
 #pragma mark 写数据后回调
-- (void)peripheral:(CBPeripheral *)peripheral
-didWriteValueForCharacteristic:(CBCharacteristic *)characteristic
-             error:(NSError *)error {
+- (void)peripheral:(CBPeripheral *)peripheral didWriteValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
     if (error) {
         NSLog(@"Error writing characteristic value: %@",
               [error localizedDescription]);

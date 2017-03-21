@@ -14,6 +14,19 @@
 @end
 
 @implementation MKSerialController
+bool isConnectedBT = false;
+bool isConnectedMjm = false;
+
+int initRewriteSerialNum = 0;
+
+bool serialWritten = false;
+
+bool confirmState = false;
+bool serialResponse = false;
+
+NSData *responsedFirstSegment;
+bool firstSegmentReceived = false;
+NSData *responsedSecondSegment;
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -29,9 +42,30 @@
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(getReciveData:) name:@"blueReciveSuccess" object:nil];
 }
 
+- (void)viewDidAppear:(BOOL)animated{
+    [super viewDidAppear:animated];
+//    if(isConnectedBT != true){
+//        while(1){
+//            if([self pendingForBlueConnection])
+//                break;
+//        }
+//    }
+//    
+//    [self rewriteSerialNum];
+}
+
+- (bool)pendingForBlueConnection{
+    if(isConnectedBT == false)
+        return false;
+    else if(isConnectedBT == true)
+        return true;
+    else
+        return false;
+}
+
 - (void)getReciveData:(NSNotification *)notification{
     NSDictionary * infoDic = [notification object];
-    NSLog(@"getRecive:%@",infoDic[@"reciveData"]);
+    NSLog(@"App layer received:%@",infoDic[@"reciveData"]);
     NSData *midiData = infoDic[@"reciveData"];
     
     // 数据解析，只解析魔棒状态反馈和命令反馈，midi信息被丢弃
@@ -67,8 +101,17 @@
             firstSegmentReceived = false;
             serialResponse = true;
         }
+        
+        initRewriteSerialNum++;
+        if(initRewriteSerialNum > 20000){
+            initRewriteSerialNum = 2;
+        }
+        
+        if(initRewriteSerialNum == 1){
+            [self rewriteSerialNum];
+        }
         // Log输出
-        NSString *reciveText = [NSString stringWithFormat:@"recive!!!!%X %X %X %X %X",nsdata_bytes[0],nsdata_bytes[1],nsdata_bytes[2],nsdata_bytes[3],nsdata_bytes[4]];
+        NSString *reciveText = [NSString stringWithFormat:@"App layer recevie:%X %X %X %X %X",firstNum,secondNum,thirdNum,forthNum,fifthNum];
         NSLog(@"%@",reciveText);
     }
     
@@ -76,8 +119,26 @@
 
 - (void)connectSuccess{
     MojoyBluetoothMgr *blue = [MojoyBluetoothMgr shareBlueTooth];
+    if([blue.deviceName  isEqual: @"bt05"]){
+        isConnectedBT = true;
+        isConnectedMjm = false;
+    }else if([blue.deviceName  isEqual: @"mjm"]){
+        isConnectedMjm = true;
+        isConnectedBT = false;
+    }else{
+        isConnectedBT = false;
+        isConnectedMjm = false;
+    }
+}
+
+
+- (bool)rewriteSerialNum{
+    MojoyBluetoothMgr *blue = [MojoyBluetoothMgr shareBlueTooth];
     
-    if(serialWritten == false){
+    if(isConnectedBT == false)
+        return false;
+    
+    if(isConnectedBT == true && serialWritten == false){
         // 确认魔棒状态
         NSData *enterQuery = [self toHexEnterQueryStatusCommandline];
         [blue writeChar:enterQuery];
@@ -85,18 +146,22 @@
             if(confirmState == true){
                 break;
             }
+            // 去掉
+//            break;
         }
         confirmState = false;
         
         // 写入新的序列号
         NSData *newSerial_first = [self newBluetoothSerialNumFirstSegment];
         [blue writeChar:newSerial_first];
-        NSData *newSerial_sencond = [self newBluetoothSerialNumFirstSegment];
+        NSData *newSerial_sencond = [self newBluetoothSerialNumSecondSegment];
         [blue writeChar:newSerial_sencond];
         while(1){
             if(confirmState == true){
                 break;
             }
+            // 去掉
+            break;
         }
         confirmState = false;
         
@@ -107,52 +172,61 @@
         [blue stopScan];
         blue.deviceName = @"mjm";
         [blue startScan];
+        return false;
     }
-
-    // 再次确认魔棒状态
-    NSData *enterQuery_second = [self toHexEnterQueryStatusCommandline];
-    [blue writeChar:enterQuery_second];
-    while(1){
-        if(confirmState == true){
+    
+    // 连接上新的序列号之后
+    if(isConnectedBT == false && isConnectedMjm == true){
+        // 再次确认魔棒状态
+        NSData *enterQuery_second = [self toHexEnterQueryStatusCommandline];
+        [blue writeChar:enterQuery_second];
+        while(1){
+            if(confirmState == true){
+                break;
+            }
+            // 去掉
             break;
         }
+        confirmState = false;
+        
+        // 比对确认新的序列号是否成功
+        Boolean confirmResult = [self reconfirmSerialNum];
+        // 结果反馈
+        if(confirmResult){
+            // 序列号比对成功
+            NSString *str = @"序列号写入成功\n %@";
+            
+            UIAlertController *alertVc = [UIAlertController alertControllerWithTitle:@"提示" message:str preferredStyle:UIAlertControllerStyleAlert];
+            [alertVc addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:^(UIAlertAction * _Nonnull action) {
+                NSLog(@"点击取消");
+            }]];
+            
+            [alertVc addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+                NSLog(@"点击确认");
+                
+            }]];
+            [self presentViewController:alertVc animated:YES completion:nil];
+        }else{
+            // 序列号比对失败
+            NSString *str = @"序列号写入失败\n %@";
+            
+            UIAlertController *alertVc = [UIAlertController alertControllerWithTitle:@"提示" message:str preferredStyle:UIAlertControllerStyleAlert];
+            [alertVc addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:^(UIAlertAction * _Nonnull action) {
+                NSLog(@"点击取消");
+            }]];
+            
+            [alertVc addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+                
+                NSLog(@"点击确认");
+                
+            }]];
+            [self presentViewController:alertVc animated:YES completion:nil];
+        }
+        serialWritten = false;
+        return true;
     }
-    confirmState = false;
     
-    // 比对确认新的序列号是否成功
-    Boolean confirmResult = [self reconfirmSerialNum];
-    // 结果反馈
-    if(confirmResult){
-        // 序列号比对成功
-        NSString *str = @"序列号写入成功\n %@";
-        
-        UIAlertController *alertVc = [UIAlertController alertControllerWithTitle:@"提示" message:str preferredStyle:UIAlertControllerStyleAlert];
-        [alertVc addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:^(UIAlertAction * _Nonnull action) {
-            NSLog(@"点击取消");
-        }]];
-        
-        [alertVc addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
-            NSLog(@"点击确认");
-            
-        }]];
-        [self presentViewController:alertVc animated:YES completion:nil];
-    }else{
-        // 序列号比对失败
-        NSString *str = @"序列号写入失败\n %@";
-        
-        UIAlertController *alertVc = [UIAlertController alertControllerWithTitle:@"提示" message:str preferredStyle:UIAlertControllerStyleAlert];
-        [alertVc addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:^(UIAlertAction * _Nonnull action) {
-            NSLog(@"点击取消");
-        }]];
-        
-        [alertVc addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
-            
-            NSLog(@"点击确认");
-            
-        }]];
-        [self presentViewController:alertVc animated:YES completion:nil];
-    }
-    serialWritten = false;
+    return false;
 }
 
 - (bool)confirmHandshake:(NSData* ) midiData{
@@ -193,19 +267,23 @@
 
 - (NSData *)newBluetoothSerialNumFirstSegment{
     // 生成新序列号
-    unsigned char dataFirstSegment[5]= {"11",};
-    NSString *firstSegment = [_codeNum substringWithRange:NSMakeRange(0, 4)]; ;
+    unsigned char dataFirstSegment[5]= {};
+    dataFirstSegment[0] = "11";
+    NSString *firstSegment = [_codeNum substringWithRange:NSMakeRange(0, 4)];
     dataFirstSegment[1] = (char)firstSegment;
-    NSData *dataB =[NSData dataWithBytes:dataFirstSegment length:4];
+    NSData *dataB =[NSData dataWithBytes:dataFirstSegment length:5];
+    NSLog(@"Serial number to be write-first segment:%@",dataB);
     return dataB;
 }
 
 - (NSData *)newBluetoothSerialNumSecondSegment{
     // 生成新序列号
-    unsigned char dataFirstSegment[5]= {"11",};
+    unsigned char dataFirstSegment[5]= {};
+    dataFirstSegment[0] = "11";
     NSString *firstSegment = [_codeNum substringWithRange:NSMakeRange(4, 4)]; ;
     dataFirstSegment[1] = (char)firstSegment;
-    NSData *dataB =[NSData dataWithBytes:dataFirstSegment length:4];
+    NSData *dataB =[NSData dataWithBytes:dataFirstSegment length:5];
+    NSLog(@"Serial number to be write-second segment:%@",dataB);
     return dataB;
 }
 
@@ -221,6 +299,7 @@
             data_currentA = responsedFirstSegment;
             data_currentB = responsedSecondSegment;
         }
+        // 去掉
         break;
     }
     serialResponse = false;
@@ -230,6 +309,12 @@
     // 生成写入前序列号
     NSData *data_previousA = [self newBluetoothSerialNumFirstSegment];
     NSData *data_previousB = [self newBluetoothSerialNumSecondSegment];
+    
+    // log
+    NSLog(@"Serial num: data_currentA:%@",data_currentA);
+    NSLog(@"Serial num: data_currentA:%@",data_currentB);
+    NSLog(@"Serial num: data_previousA:%@",data_previousA);
+    NSLog(@"Serial num: data_previousB:%@",data_previousB);
 
     // 比对序列号
     if(data_previousA != data_currentA){
@@ -251,7 +336,7 @@
     int forthNum = (int)strtol("00", NULL, 16);
     int fifthNum = (int)strtol("02", NULL, 16);
     
-    printf("%X-%X-%X-%X-%X",firstNum,secondNum,thirdNum,forthNum,fifthNum);
+    printf("%X-%X-%X-%X-%X\n",firstNum,secondNum,thirdNum,forthNum,fifthNum);
     data[0] = (char)firstNum;
     data[1] = (char)secondNum;
     data[2] = (char)thirdNum;
@@ -259,6 +344,8 @@
     data[4] = (char)fifthNum;
     
     NSData *dataB =[NSData dataWithBytes:data length:5];
+    // log
+    NSLog(@"Serial query command line:%@",dataB);
     return dataB;
 }
 
@@ -272,7 +359,7 @@
     int forthNum = (int)strtol("00", NULL, 16);
     int fifthNum = (int)strtol("01", NULL, 16);
     
-    printf("%X-%X-%X-%X-%X",firstNum,secondNum,thirdNum,forthNum,fifthNum);
+    printf("%X-%X-%X-%X-%X\n",firstNum,secondNum,thirdNum,forthNum,fifthNum);
     data[0] = (char)firstNum;
     data[1] = (char)secondNum;
     data[2] = (char)thirdNum;
@@ -280,6 +367,8 @@
     data[4] = (char)fifthNum;
     
     NSData *dataB =[NSData dataWithBytes:data length:5];
+    // log
+    NSLog(@"Enter query command line:%@",dataB);
     return dataB;
 }
 
