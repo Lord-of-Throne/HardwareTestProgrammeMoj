@@ -432,6 +432,7 @@ NSString *targetBluetoothName = @"mjm";
 
 - (void)dealloc{
      [[NSNotificationCenter defaultCenter] removeObserver:self name:@"blueConnectSuccess" object:nil];
+     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"blueReciveSuccess" object:nil];
 }
 
 
