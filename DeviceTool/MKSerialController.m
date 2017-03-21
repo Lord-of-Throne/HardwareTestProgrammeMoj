@@ -22,9 +22,18 @@
     NSLog(@"codeNum:%@",self.codeNum);
     MojoyBluetoothMgr *blue = [MojoyBluetoothMgr shareBlueTooth];
     blue.deviceName = @"mjm-";
-
+    //连接成功获取特征值的通知
      [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(connectSuccess) name:@"blueConnectSuccess" object:nil];
+    //接收到数据的通知
+    [[NSNotificationCenter defaultCenter]
+     addObserver:self selector:@selector(getReciveData:) name:@"blueReciveSuccess" object:nil];
 }
+
+- (void)getReciveData:(NSNotification *)notification{
+    NSDictionary * infoDic = [notification object];
+    NSLog(@"getRecive:%@",infoDic[@"reciveData"]);
+}
+
 - (void)connectSuccess{
     // 写入新的序列号
     MojoyBluetoothMgr *blue = [MojoyBluetoothMgr shareBlueTooth];
