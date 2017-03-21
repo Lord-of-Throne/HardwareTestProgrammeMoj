@@ -196,7 +196,7 @@ NSString *targetBluetoothName = @"mjm";
     
     // 连接上新的序列号之后
     // todo: 把isConnectedBT改为false
-    if(isConnectedBT == true && isConnectedMjm == true){
+    if(isConnectedBT == false && isConnectedMjm == true){
         // 再次确认魔棒状态
         NSData *enterQuery_second = [self toHexEnterQueryStatusCommandline];
         [blue writeChar:enterQuery_second];
