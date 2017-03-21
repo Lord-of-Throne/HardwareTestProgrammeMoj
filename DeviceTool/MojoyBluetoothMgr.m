@@ -136,9 +136,8 @@
         // read the characteristic’s value，回调didUpdateValueForCharacteristic
         [peripheral readValueForCharacteristic:c];
         _writeCharacteristic = c;
-        [[NSNotificationCenter defaultCenter] postNotificationName:@"blueConnectSuccess" object:nil];
     }
-    
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"blueConnectSuccess" object:nil];
 }
 
 //订阅的特征值有新的数据时回调

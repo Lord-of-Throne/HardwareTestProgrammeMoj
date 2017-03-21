@@ -26,38 +26,98 @@
 
      [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(connectSuccess) name:@"blueConnectSuccess" object:nil];
     //接收到数据的通知
-    [[NSNotificationCenter defaultCenter]
-     addObserver:self selector:@selector(getReciveData:) name:@"blueReciveSuccess" object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(getReciveData:) name:@"blueReciveSuccess" object:nil];
 }
 
 - (void)getReciveData:(NSNotification *)notification{
     NSDictionary * infoDic = [notification object];
     NSLog(@"getRecive:%@",infoDic[@"reciveData"]);
+    NSData *midiData = infoDic[@"reciveData"];
+    
+    // 数据解析，只解析魔棒状态反馈和命令反馈，midi信息被丢弃
+    NSUInteger len = [midiData length];
+    NSUInteger loopCount = len / 5;
+    NSLog(@"Translating....");
+    const unsigned char *nsdata_bytes = (unsigned char*)[midiData bytes];
+    
+    unsigned int firstNum   = 0;
+    unsigned int secondNum = 0;
+    unsigned int thirdNum  = 0;
+    unsigned int forthNum   = 0;
+    unsigned int fifthNum    = 0;
+    // 魔棒反馈数据，正常情况下每次5个字节
+    for (int i = 0; i < loopCount; i++) {
+        // 数据分解
+        firstNum   = nsdata_bytes[i*5 + 0];
+        secondNum = nsdata_bytes[i*5 + 1];
+        thirdNum  = nsdata_bytes[i*5 + 2];
+        forthNum   = nsdata_bytes[i*5 + 3];
+        fifthNum    = nsdata_bytes[i*5 + 4];
+        // 反馈解析
+        // 0x20魔棒状态反馈；0x11魔棒序列回复
+        if(firstNum == 0x20){
+            if([self confirmHandshake:midiData]){
+            confirmState = true;
+            }
+        }else if(firstNum == 0x11 && firstSegmentReceived == false){
+            responsedFirstSegment = midiData;
+            firstSegmentReceived = true;
+        }else if(firstNum == 0x11 && firstSegmentReceived == true){
+            responsedSecondSegment = midiData;
+            firstSegmentReceived = false;
+            serialResponse = true;
+        }
+        // Log输出
+        NSString *reciveText = [NSString stringWithFormat:@"recive!!!!%X %X %X %X %X",nsdata_bytes[0],nsdata_bytes[1],nsdata_bytes[2],nsdata_bytes[3],nsdata_bytes[4]];
+        NSLog(@"%@",reciveText);
+    }
+    
 }
 
 - (void)connectSuccess{
-    // 确认魔棒状态
-    NSData *enterQuery = [self toHexEnterQueryStatusCommandline];
-//    [blue writeChar:enterQuery];
-//    [self confirmHandshake];
-    
-    // 写入新的序列号
     MojoyBluetoothMgr *blue = [MojoyBluetoothMgr shareBlueTooth];
-    NSData *newSerial_first = [self newBluetoothSerialNumFirstSegment];
-    [blue writeChar:newSerial_first];
-    NSData *newSerial_sencond = [self newBluetoothSerialNumFirstSegment];
-    [blue writeChar:newSerial_sencond];
-//    [self confirmHandshake];
     
-    // 重新连接新的codeNum蓝牙
-    [blue stopScan];
-    blue.deviceName = @"mjm";
-    [blue startScan];
-    
+    if(serialWritten == false){
+        // 确认魔棒状态
+        NSData *enterQuery = [self toHexEnterQueryStatusCommandline];
+        [blue writeChar:enterQuery];
+        while(1){
+            if(confirmState == true){
+                break;
+            }
+        }
+        confirmState = false;
+        
+        // 写入新的序列号
+        NSData *newSerial_first = [self newBluetoothSerialNumFirstSegment];
+        [blue writeChar:newSerial_first];
+        NSData *newSerial_sencond = [self newBluetoothSerialNumFirstSegment];
+        [blue writeChar:newSerial_sencond];
+        while(1){
+            if(confirmState == true){
+                break;
+            }
+        }
+        confirmState = false;
+        
+        // 写入序列号后状态管理
+        serialWritten = true;
+        
+        // 重新连接新的codeNum蓝牙
+        [blue stopScan];
+        blue.deviceName = @"mjm";
+        [blue startScan];
+    }
+
     // 再次确认魔棒状态
     NSData *enterQuery_second = [self toHexEnterQueryStatusCommandline];
-    //    [blue writeChar:enterQuery];
-    //    [self confirmHandshake];
+    [blue writeChar:enterQuery_second];
+    while(1){
+        if(confirmState == true){
+            break;
+        }
+    }
+    confirmState = false;
     
     // 比对确认新的序列号是否成功
     Boolean confirmResult = [self reconfirmSerialNum];
@@ -92,10 +152,10 @@
         }]];
         [self presentViewController:alertVc animated:YES completion:nil];
     }
+    serialWritten = false;
 }
 
-- (bool)confirmHandshake:(CBCharacteristic *)characteristic{
-    NSData* midiData = [characteristic value];
+- (bool)confirmHandshake:(NSData* ) midiData{
     NSLog(@"---------------------------------------------");
     NSLog(@"Bluetooth raw data arreived:%@",midiData);
     NSUInteger len = [midiData length];
@@ -150,23 +210,34 @@
 }
 
 - (bool)reconfirmSerialNum{
+    MojoyBluetoothMgr *blue = [MojoyBluetoothMgr shareBlueTooth];
     // 查询序列号
     NSData *dataA = [self toHexQuerySerialNumCommandline];
-//    [blue writeChar:newSerial];
+    [blue writeChar:dataA];
+    NSData *data_currentA;
+    NSData *data_currentB;
+    while (1) {
+        if(serialResponse == true){
+            data_currentA = responsedFirstSegment;
+            data_currentB = responsedSecondSegment;
+        }
+        break;
+    }
+    serialResponse = false;
+    responsedFirstSegment = nil;
+    responsedSecondSegment = nil;
     
     // 生成写入前序列号
     NSData *data_previousA = [self newBluetoothSerialNumFirstSegment];
     NSData *data_previousB = [self newBluetoothSerialNumSecondSegment];
 
     // 比对序列号
-//    NSData *data_currentA = getSerialFirstSegment;
-//    NSData *data_currentB = getSerialSecondSegment;
-//    if(data_previousA != data_currentA){
-//        return false;
-//    }
-//    if(data_previousB != data_currentB){
-//        return false;
-//    }
+    if(data_previousA != data_currentA){
+        return false;
+    }
+    if(data_previousB != data_currentB){
+        return false;
+    }
     
     return true;
 }
@@ -199,7 +270,7 @@
     int secondNum = (int)strtol("00", NULL, 16);
     int thirdNum = (int)strtol("00", NULL, 16);
     int forthNum = (int)strtol("00", NULL, 16);
-    int fifthNum = (int)strtol("02", NULL, 16);
+    int fifthNum = (int)strtol("01", NULL, 16);
     
     printf("%X-%X-%X-%X-%X",firstNum,secondNum,thirdNum,forthNum,fifthNum);
     data[0] = (char)firstNum;

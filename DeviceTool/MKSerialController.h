@@ -12,3 +12,12 @@
 @interface MKSerialController : UIViewController<CBCentralManagerDelegate,CBPeripheralDelegate>
 @property (nonatomic,strong)NSString *codeNum;
 @end
+
+bool serialWritten = false;
+
+bool confirmState = false;
+bool serialResponse = false;
+
+NSData *responsedFirstSegment;
+bool firstSegmentReceived = false;
+NSData *responsedSecondSegment;
