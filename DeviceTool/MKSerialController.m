@@ -25,7 +25,16 @@
     blue.deviceName = @"bt05";
 
      [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(connectSuccess) name:@"blueConnectSuccess" object:nil];
+    //接收到数据的通知
+    [[NSNotificationCenter defaultCenter]
+     addObserver:self selector:@selector(getReciveData:) name:@"blueReciveSuccess" object:nil];
 }
+
+- (void)getReciveData:(NSNotification *)notification{
+    NSDictionary * infoDic = [notification object];
+    NSLog(@"getRecive:%@",infoDic[@"reciveData"]);
+}
+
 - (void)connectSuccess{
     // 确认魔棒状态
     NSData *enterQuery = [self toHexEnterQueryStatusCommandline];

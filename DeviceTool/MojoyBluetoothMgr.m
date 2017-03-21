@@ -93,7 +93,7 @@
     [_discoveredPeripheral setDelegate:self];
     //discover all of the services that a peripheral offers,搜索服务,回调didDiscoverServices
     [_discoveredPeripheral discoverServices:nil];
-    [[NSNotificationCenter defaultCenter] postNotificationName:@"blueConnectSuccess" object:nil];
+
     NSString *str = [NSString stringWithFormat:@"连接%@成功!",peripheral.name];
 }
 
@@ -136,6 +136,7 @@
         // read the characteristic’s value，回调didUpdateValueForCharacteristic
         [peripheral readValueForCharacteristic:c];
         _writeCharacteristic = c;
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"blueConnectSuccess" object:nil];
     }
     
 }
@@ -161,6 +162,10 @@ didUpdateNotificationStateForCharacteristic:(CBCharacteristic *)characteristic
     NSUInteger len = [midiData length];
     NSUInteger loopCount = len / 5;
     const unsigned char *nsdata_bytes = (unsigned char*)[midiData bytes];
+    
+    [[NSNotificationCenter defaultCenter]
+     postNotificationName:@"blueReciveSuccess" object:@{@"reciveData":midiData}];
+    
     for (int i = 0; i < loopCount; i++) {
         unsigned int noteStatus = nsdata_bytes[i*5 + 2];//开始结束标志
         unsigned int noteValue = nsdata_bytes[i*5 + 3];//音符
