@@ -32,7 +32,7 @@ bool reconfirmResult = false;
 //NSString *sourceBluetoothName = @"BT05";
 //NSString *targetBluetoothName = @"mjm";
 NSString *sourceBluetoothName = @"mjm";
-NSString *targetBluetoothName = @"mjm";
+NSString *targetBluetoothName = @"mjm-";
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -40,6 +40,7 @@ NSString *targetBluetoothName = @"mjm";
      self.view.backgroundColor = [UIColor colorWithWhite:0.858 alpha:1.000];
     // LOG条形码信息
     NSLog(@"codeNum:%@",self.codeNum);
+    targetBluetoothName = [NSString stringWithFormat:@"%@%@",targetBluetoothName,[_codeNum substringWithRange:NSMakeRange(0, 8)]];
     // 连接默认蓝牙
     MojoyBluetoothMgr *blue = [MojoyBluetoothMgr shareBlueTooth];
     blue.deviceName = sourceBluetoothName;
@@ -130,8 +131,8 @@ NSString *targetBluetoothName = @"mjm";
     
     if(isConnectedBT == false)
         return false;
-    
-    if(isConnectedBT == true && serialWritten == false && isConnectedMjm == false){
+    // todo: isConnectedMjm改为false
+    if(isConnectedBT == true && serialWritten == false && isConnectedMjm == true){
         // 确认魔棒状态
         NSData *enterQuery = [self toHexEnterQueryStatusCommandline];
         [blue writeChar:enterQuery];
@@ -163,9 +164,9 @@ NSString *targetBluetoothName = @"mjm";
         [blue stopScan];
         blue.deviceName = targetBluetoothName;
         [blue startScan];
-        
+        // todo: 把isConnectedBT改为false
         while(1){
-            if(isConnectedBT == false && isConnectedMjm == true){
+            if(isConnectedBT == true && isConnectedMjm == true){
                 break;
             }
         }
@@ -173,7 +174,7 @@ NSString *targetBluetoothName = @"mjm";
     
     // 连接上新的序列号之后
     // todo: 把isConnectedBT改为false
-    if(isConnectedBT == false && serialWritten == true && isConnectedMjm == true){
+    if(isConnectedBT == true && serialWritten == true && isConnectedMjm == true){
         // 再次确认魔棒状态
         NSData *enterQuery_second = [self toHexEnterQueryStatusCommandline];
         [blue writeChar:enterQuery_second];
