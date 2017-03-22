@@ -17,8 +17,6 @@
 bool isConnectedBT = false;
 bool isConnectedMjm = false;
 
-int initRewriteSerialNum = 0;
-
 bool serialWritten = false;
 
 bool confirmState = false;
@@ -28,58 +26,43 @@ NSData *responsedFirstSegment;
 bool firstSegmentReceived = false;
 NSData *responsedSecondSegment;
 
-bool confirmResult = false;
+bool reconfirmResult = false;
 
 // 把蓝牙对换
-//NSString *sourceBluetoothName = @"BT05";
-//NSString *targetBluetoothName = @"mjm";
-NSString *sourceBluetoothName = @"mjm";
+NSString *sourceBluetoothName = @"BT05";
 NSString *targetBluetoothName = @"mjm";
+//NSString *sourceBluetoothName = @"mjm";
+//NSString *targetBluetoothName = @"mjm";
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-        // Do any additional setup after loading the view from its nib.
+    // Do any additional setup after loading the view from its nib.
      self.view.backgroundColor = [UIColor colorWithWhite:0.858 alpha:1.000];
+    // LOG条形码信息
     NSLog(@"codeNum:%@",self.codeNum);
-    // 连接默认蓝牙, 获得条形码信息
+    // 连接默认蓝牙
     MojoyBluetoothMgr *blue = [MojoyBluetoothMgr shareBlueTooth];
-
     blue.deviceName = sourceBluetoothName;
-
-     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(connectSuccess) name:@"blueConnectSuccess" object:nil];
-    //接收到数据的通知
+    // 接收到连接成功的通知
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(connectSuccess) name:@"blueConnectSuccess" object:nil];
+    // 接收到数据的通知
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(getReciveData:) name:@"blueReciveSuccess" object:nil];
 }
 
 - (void)viewDidAppear:(BOOL)animated{
     [super viewDidAppear:animated];
-//    if(isConnectedBT != true){
-//        while(1){
-//            if([self pendingForBlueConnection])
-//                break;
-//        }
-//    }
-    
-//    [NSThread detachNewThreadSelector:@selector(rewriteSerialNum) toTarget:self withObject:nil];
+    // 开启线程进行逻辑处理，主线程负责ui、状态位及蓝牙数据的接收
     NSThread* myThread = [[NSThread alloc] initWithTarget:self selector:@selector(rewriteSerialNum) object:nil];
     [myThread start];
 }
 
-- (bool)pendingForBlueConnection{
-    if(isConnectedBT == false)
-        return false;
-    else if(isConnectedBT == true)
-        return true;
-    else
-        return false;
-}
-
+    // 通知：接收到蓝牙数据的回调
 - (void)getReciveData:(NSNotification *)notification{
     NSDictionary * infoDic = [notification object];
     NSLog(@"App layer received:%@",infoDic[@"reciveData"]);
     NSData *midiData = infoDic[@"reciveData"];
     
-    // 数据解析，只解析魔棒状态反馈和命令反馈，midi信息被丢弃
+    // 数据解析，只解析魔棒状态反馈和命令反馈，其他midi信息被丢弃
     NSUInteger len = [midiData length];
     NSUInteger loopCount = len / 5;
     NSLog(@"Translating....");
@@ -113,18 +96,13 @@ NSString *targetBluetoothName = @"mjm";
             serialResponse = true;
         }
         
-        initRewriteSerialNum++;
-        if(initRewriteSerialNum > 20000){
-            initRewriteSerialNum = 2;
-        }
-        
         // Log输出
         NSString *reciveText = [NSString stringWithFormat:@"App layer recevie:%X %X %X %X %X",firstNum,secondNum,thirdNum,forthNum,fifthNum];
         NSLog(@"%@",reciveText);
     }
     
 }
-
+    // 通知：连接成功的回调
 - (void)connectSuccess{
     MojoyBluetoothMgr *blue = [MojoyBluetoothMgr shareBlueTooth];
     if([blue.deviceName  isEqual: sourceBluetoothName] && ![blue.deviceName  isEqual: targetBluetoothName]){
@@ -142,7 +120,7 @@ NSString *targetBluetoothName = @"mjm";
     }
 }
 
-
+    // 重写序列号的函数，在线程中运行
 - (bool)rewriteSerialNum{
     MojoyBluetoothMgr *blue = [MojoyBluetoothMgr shareBlueTooth];
     
@@ -154,7 +132,7 @@ NSString *targetBluetoothName = @"mjm";
     if(isConnectedBT == false)
         return false;
     
-    if(isConnectedBT == true && serialWritten == false){
+    if(isConnectedBT == true && serialWritten == false && isConnectedMjm == false){
         // 确认魔棒状态
         NSData *enterQuery = [self toHexEnterQueryStatusCommandline];
         [blue writeChar:enterQuery];
@@ -196,7 +174,7 @@ NSString *targetBluetoothName = @"mjm";
     
     // 连接上新的序列号之后
     // todo: 把isConnectedBT改为false
-    if(isConnectedBT == false && isConnectedMjm == true){
+    if(isConnectedBT == false && serialWritten == true && isConnectedMjm == true){
         // 再次确认魔棒状态
         NSData *enterQuery_second = [self toHexEnterQueryStatusCommandline];
         [blue writeChar:enterQuery_second];
@@ -207,16 +185,16 @@ NSString *targetBluetoothName = @"mjm";
         }
         confirmState = false;
         
-        // 比对确认新的序列号是否成功
+        // 比对确认新的序列号是否成功，由于再确认逻辑中有等待阻塞，故开启线程
         NSThread* myThread = [[NSThread alloc] initWithTarget:self selector:@selector(reconfirmSerialNum) object:nil];
         [myThread start];
         while(1){
-            if(confirmResult == true){
+            if(reconfirmResult == true){
                 break;
             }
         }
         // 结果反馈
-        if(confirmResult){
+        if(reconfirmResult){
             // 序列号比对成功
             NSString *str = @"序列号写入成功\n %@";
             
@@ -247,10 +225,9 @@ NSString *targetBluetoothName = @"mjm";
             [self presentViewController:alertVc animated:YES completion:nil];
         }
         serialWritten = false;
-        confirmResult = false;
+        reconfirmResult = false;
         return true;
     }
-    
     return false;
 }
 
@@ -284,7 +261,44 @@ NSString *targetBluetoothName = @"mjm";
         return false;
     
     return true;
+}
+
+- (void)reconfirmSerialNum{
+    MojoyBluetoothMgr *blue = [MojoyBluetoothMgr shareBlueTooth];
+    // 查询序列号
+    NSData *dataA = [self toHexQuerySerialNumCommandline];
+    [blue writeChar:dataA];
+    NSData *data_currentA;
+    NSData *data_currentB;
+    while (1) {
+        if(serialResponse == true){
+            data_currentA = responsedFirstSegment;
+            data_currentB = responsedSecondSegment;
+        }
+    }
+    serialResponse = false;
     
+    // 生成写入前序列号
+    NSData *data_previousA = [self newBluetoothSerialNumFirstSegment];
+    NSData *data_previousB = [self newBluetoothSerialNumSecondSegment];
+    
+    // log
+    NSLog(@"Serial num: data_currentA:%@",data_currentA);
+    NSLog(@"Serial num: data_currentA:%@",data_currentB);
+    NSLog(@"Serial num: data_previousA:%@",data_previousA);
+    NSLog(@"Serial num: data_previousB:%@",data_previousB);
+    
+    // 比对序列号
+    if(![data_previousA isEqual: data_currentA]){
+        reconfirmResult = false;
+    }
+    if(![data_previousB isEqual: data_currentB]){
+        reconfirmResult = false;
+    }
+    
+    reconfirmResult = true;
+    responsedFirstSegment = nil;
+    responsedSecondSegment = nil;
 }
 
 - (NSData *)newBluetoothSerialNumFirstSegment{
@@ -341,43 +355,7 @@ NSString *targetBluetoothName = @"mjm";
     return dataB;
 }
 
-- (void)reconfirmSerialNum{
-    MojoyBluetoothMgr *blue = [MojoyBluetoothMgr shareBlueTooth];
-    // 查询序列号
-    NSData *dataA = [self toHexQuerySerialNumCommandline];
-    [blue writeChar:dataA];
-    NSData *data_currentA;
-    NSData *data_currentB;
-    while (1) {
-        if(serialResponse == true){
-            data_currentA = responsedFirstSegment;
-            data_currentB = responsedSecondSegment;
-        }
-    }
-    serialResponse = false;
-    responsedFirstSegment = nil;
-    responsedSecondSegment = nil;
-    
-    // 生成写入前序列号
-    NSData *data_previousA = [self newBluetoothSerialNumFirstSegment];
-    NSData *data_previousB = [self newBluetoothSerialNumSecondSegment];
-    
-    // log
-    NSLog(@"Serial num: data_currentA:%@",data_currentA);
-    NSLog(@"Serial num: data_currentA:%@",data_currentB);
-    NSLog(@"Serial num: data_previousA:%@",data_previousA);
-    NSLog(@"Serial num: data_previousB:%@",data_previousB);
 
-    // 比对序列号
-    if(data_previousA != data_currentA){
-        confirmResult = false;
-    }
-    if(data_previousB != data_currentB){
-        confirmResult = false;
-    }
-    
-    confirmResult = true;
-}
 #pragma mark 生成16进制命令-查询序列号
 - (NSData *)toHexQuerySerialNumCommandline{
     unsigned char data[5]= {};
@@ -401,7 +379,7 @@ NSString *targetBluetoothName = @"mjm";
     return dataB;
 }
 
-#pragma mark 生成16进制命令-进入魔棒查询状态
+#pragma mark 生成16进制命令-查询魔棒状态
 - (NSData *)toHexEnterQueryStatusCommandline{
     unsigned char data[5]= {};
     
