@@ -6,6 +6,7 @@
 //  Copyright © 2017年 Monky. All rights reserved.
 //
 
+// todo: 把默认蓝牙名改为BT05
 #import "MojoyBluetoothMgr.h"
 #define DefaultDeviceName @"mjm"
 
@@ -190,7 +191,7 @@
 {
     // Log
     NSLog(@"Blue tooth write data: %@",data);
-    //回调didWriteValueForCharacteristic
+    // 回调didWriteValueForCharacteristic
     [_discoveredPeripheral writeValue:data forCharacteristic:_writeCharacteristic type:CBCharacteristicWriteWithoutResponse];
 }
 

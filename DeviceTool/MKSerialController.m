@@ -28,11 +28,11 @@ NSData *responsedSecondSegment;
 
 bool reconfirmResult = false;
 
-// 把蓝牙对换
-NSString *sourceBluetoothName = @"BT05";
-NSString *targetBluetoothName = @"mjm";
-//NSString *sourceBluetoothName = @"mjm";
+// 蓝牙名
+//NSString *sourceBluetoothName = @"BT05";
 //NSString *targetBluetoothName = @"mjm";
+NSString *sourceBluetoothName = @"mjm";
+NSString *targetBluetoothName = @"mjm";
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -58,7 +58,7 @@ NSString *targetBluetoothName = @"mjm";
 
     // 通知：接收到蓝牙数据的回调
 - (void)getReciveData:(NSNotification *)notification{
-    NSDictionary * infoDic = [notification object];
+    NSDictionary *infoDic = [notification object];
     NSLog(@"App layer received:%@",infoDic[@"reciveData"]);
     NSData *midiData = infoDic[@"reciveData"];
     
@@ -100,7 +100,6 @@ NSString *targetBluetoothName = @"mjm";
         NSString *reciveText = [NSString stringWithFormat:@"App layer recevie:%X %X %X %X %X",firstNum,secondNum,thirdNum,forthNum,fifthNum];
         NSLog(@"%@",reciveText);
     }
-    
 }
     // 通知：连接成功的回调
 - (void)connectSuccess{
@@ -316,6 +315,13 @@ NSString *targetBluetoothName = @"mjm";
     int forthNum = (int)strtol((char *)[serialThirdNum UTF8String], NULL, 16);
     int fifthNum = (int)strtol((char *)[serialFourthNum UTF8String], NULL, 16);
     
+    // 转换为ASCII码
+    int ASCII_NUM_offset = 0x30;
+    secondNum = secondNum + ASCII_NUM_offset;
+    thirdNum = thirdNum + ASCII_NUM_offset;
+    forthNum = forthNum + ASCII_NUM_offset;
+    fifthNum = fifthNum + ASCII_NUM_offset;
+    
     printf("%X-%X-%X-%X-%X\n",firstNum,secondNum,thirdNum,forthNum,fifthNum);
     data[0] = (char)firstNum;
     data[1] = (char)secondNum;
@@ -342,6 +348,13 @@ NSString *targetBluetoothName = @"mjm";
     int thirdNum = (int)strtol((char *)[serialSecondNum UTF8String], NULL, 16);
     int forthNum = (int)strtol((char *)[serialThirdNum UTF8String], NULL, 16);
     int fifthNum = (int)strtol((char *)[serialFourthNum UTF8String], NULL, 16);
+    
+    // 转换为ASCII码
+    int ASCII_NUM_offset = 0x30;
+    secondNum = secondNum + ASCII_NUM_offset;
+    thirdNum = thirdNum + ASCII_NUM_offset;
+    forthNum = forthNum + ASCII_NUM_offset;
+    fifthNum = fifthNum + ASCII_NUM_offset;
     
     printf("%X-%X-%X-%X-%X\n",firstNum,secondNum,thirdNum,forthNum,fifthNum);
     data[0] = (char)firstNum;
