@@ -10,10 +10,27 @@
 #import "MojoyBluetoothMgr.h"
 
 @interface MKSerialController ()
+@property (weak, nonatomic) IBOutlet UITextField *bluetoothNameInput;
+
+@property (weak, nonatomic) IBOutlet UILabel *connectOrign;
+@property (weak, nonatomic) IBOutlet UILabel *originalDeivceIsOk;
+@property (weak, nonatomic) IBOutlet UILabel *uiNewNameSent;
+@property (weak, nonatomic) IBOutlet UILabel *uiNewNameSentSuccessfully;
+@property (weak, nonatomic) IBOutlet UILabel *reconnectNewNamedDevice;
+@property (weak, nonatomic) IBOutlet UILabel *confirmNewNamedDeviceOk;
+@property (weak, nonatomic) IBOutlet UILabel *nameComparedSuccessfully;
 
 @end
 
 @implementation MKSerialController
+
+// 蓝牙名
+// todo: 取消第一个注释
+//NSString *sourceBluetoothName = @"BT05";
+//NSString *targetBluetoothName = @"mjm";
+NSString *sourceBluetoothName = @"mjm";
+NSString *targetBluetoothName = @"mjm-";
+
 bool isConnectedBT = false;
 bool isConnectedMjm = false;
 
@@ -26,13 +43,25 @@ NSData *responsedFirstSegment;
 bool firstSegmentReceived = false;
 NSData *responsedSecondSegment;
 
-bool reconfirmResult = false;
+NSNumber *intNumber;
 
-// 蓝牙名
-//NSString *sourceBluetoothName = @"BT05";
-//NSString *targetBluetoothName = @"mjm";
-NSString *sourceBluetoothName = @"mjm";
-NSString *targetBluetoothName = @"mjm-";
+bool reconfirmResult = false;
+- (IBAction)connectButton:(id)sender {
+    if([_bluetoothNameInput.text  isEqual: @""]){
+        sourceBluetoothName = _bluetoothNameInput.placeholder;
+    }else{
+        sourceBluetoothName = _bluetoothNameInput.text;
+    }
+    // 重新连接指定蓝牙
+    MojoyBluetoothMgr *blue = [MojoyBluetoothMgr shareBlueTooth];
+    isConnectedBT = false;
+    isConnectedMjm = false;
+    blue.deviceName = sourceBluetoothName;
+    
+    // 开启线程进行逻辑处理，主线程负责ui、状态位及蓝牙数据的接收
+    NSThread* myThread = [[NSThread alloc] initWithTarget:self selector:@selector(rewriteSerialNum) object:nil];
+    [myThread start];
+}
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -41,20 +70,26 @@ NSString *targetBluetoothName = @"mjm-";
     // LOG条形码信息
     NSLog(@"codeNum:%@",self.codeNum);
     targetBluetoothName = [NSString stringWithFormat:@"%@%@",targetBluetoothName,[_codeNum substringWithRange:NSMakeRange(0, 8)]];
-    // 连接默认蓝牙
-    MojoyBluetoothMgr *blue = [MojoyBluetoothMgr shareBlueTooth];
-    blue.deviceName = sourceBluetoothName;
+    
+    _bluetoothNameInput.placeholder = @"BT05";
+
     // 接收到连接成功的通知
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(connectSuccess) name:@"blueConnectSuccess" object:nil];
     // 接收到数据的通知
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(getReciveData:) name:@"blueReciveSuccess" object:nil];
+    
+    // 流程ui
+    _connectOrign.textColor              = [UIColor redColor];
+    _originalDeivceIsOk.textColor        = [UIColor redColor];
+    _uiNewNameSent.textColor             = [UIColor redColor];
+    _uiNewNameSentSuccessfully.textColor = [UIColor redColor];
+    _reconnectNewNamedDevice.textColor   = [UIColor redColor];
+    _confirmNewNamedDeviceOk.textColor   = [UIColor redColor];
+    _nameComparedSuccessfully.textColor  = [UIColor redColor];
 }
 
 - (void)viewDidAppear:(BOOL)animated{
     [super viewDidAppear:animated];
-    // 开启线程进行逻辑处理，主线程负责ui、状态位及蓝牙数据的接收
-    NSThread* myThread = [[NSThread alloc] initWithTarget:self selector:@selector(rewriteSerialNum) object:nil];
-    [myThread start];
 }
 
     // 通知：接收到蓝牙数据的回调
@@ -89,10 +124,30 @@ NSString *targetBluetoothName = @"mjm-";
             confirmState = true;
             }
         }else if(firstNum == 0x11 && firstSegmentReceived == false){
-            responsedFirstSegment = midiData;
+            unsigned char data[5]= {};
+            printf("%X-%X-%X-%X-%X\n",firstNum,secondNum,thirdNum,forthNum,fifthNum);
+            
+            data[0] = (char)firstNum;
+            data[1] = (char)secondNum;
+            data[2] = (char)thirdNum;
+            data[3] = (char)forthNum;
+            data[4] = (char)fifthNum;
+            NSData *dataB =[NSData dataWithBytes:data length:5];
+            
+            responsedFirstSegment = dataB;
             firstSegmentReceived = true;
         }else if(firstNum == 0x11 && firstSegmentReceived == true){
-            responsedSecondSegment = midiData;
+            unsigned char data[5]= {};
+            printf("%X-%X-%X-%X-%X\n",firstNum,secondNum,thirdNum,forthNum,fifthNum);
+            
+            data[0] = (char)firstNum;
+            data[1] = (char)secondNum;
+            data[2] = (char)thirdNum;
+            data[3] = (char)forthNum;
+            data[4] = (char)fifthNum;
+            NSData *dataB =[NSData dataWithBytes:data length:5];
+            responsedSecondSegment = dataB;
+            
             firstSegmentReceived = false;
             serialResponse = true;
         }
@@ -120,6 +175,35 @@ NSString *targetBluetoothName = @"mjm-";
     }
 }
 
+- (void)updateUILabel:(NSNumber*) processNum{
+    int a = [processNum intValue];
+    switch (a) {
+        case 1:
+            _connectOrign.textColor              = [UIColor blueColor];
+            break;
+        case 2:
+            _originalDeivceIsOk.textColor        = [UIColor blueColor];
+            break;
+        case 3:
+            _uiNewNameSent.textColor             = [UIColor blueColor];
+            break;
+        case 4:
+            _uiNewNameSentSuccessfully.textColor = [UIColor blueColor];
+            break;
+        case 5:
+            _reconnectNewNamedDevice.textColor   = [UIColor blueColor];
+            break;
+        case 6:
+            _confirmNewNamedDeviceOk.textColor   = [UIColor blueColor];
+            break;
+        case 7:
+            _nameComparedSuccessfully.textColor  = [UIColor blueColor];
+            break;
+        default:
+            break;
+    }
+}
+
     // 重写序列号的函数，在线程中运行
 - (bool)rewriteSerialNum{
     MojoyBluetoothMgr *blue = [MojoyBluetoothMgr shareBlueTooth];
@@ -128,12 +212,14 @@ NSString *targetBluetoothName = @"mjm-";
         if(isConnectedBT == true)
             break;
     }
+    intNumber = [NSNumber numberWithInt:1];
+    [self performSelectorOnMainThread:@selector(updateUILabel:) withObject:intNumber waitUntilDone:YES];
     
     if(isConnectedBT == false)
         return false;
-    // todo: isConnectedMjm改为false
-    if(isConnectedBT == true && serialWritten == false && isConnectedMjm == true){
-        // 确认魔棒状态
+    
+    if(isConnectedBT == true && serialWritten == false && isConnectedMjm == false){
+        // 确认魔棒状
         NSData *enterQuery = [self toHexEnterQueryStatusCommandline];
         [blue writeChar:enterQuery];
         while(1){
@@ -141,6 +227,8 @@ NSString *targetBluetoothName = @"mjm-";
                 break;
             }
         }
+        intNumber = [NSNumber numberWithInt:2];
+        [self performSelectorOnMainThread:@selector(updateUILabel:) withObject:intNumber waitUntilDone:YES];
         confirmState = false;
         
         // 写入新的序列号
@@ -148,11 +236,16 @@ NSString *targetBluetoothName = @"mjm-";
         [blue writeChar:newSerial_first];
         NSData *newSerial_sencond = [self newBluetoothSerialNumSecondSegment];
         [blue writeChar:newSerial_sencond];
+        intNumber = [NSNumber numberWithInt:3];
+        [self performSelectorOnMainThread:@selector(updateUILabel:) withObject:intNumber waitUntilDone:YES];
+        
         while(1){
             if(confirmState == true){
                 break;
             }
         }
+        intNumber = [NSNumber numberWithInt:4];
+        [self performSelectorOnMainThread:@selector(updateUILabel:) withObject:intNumber waitUntilDone:YES];
         confirmState = false;
         
         // 写入序列号后状态管理
@@ -166,15 +259,17 @@ NSString *targetBluetoothName = @"mjm-";
         [blue startScan];
         // todo: 把isConnectedBT改为false
         while(1){
-            if(isConnectedBT == true && isConnectedMjm == true){
+            if(isConnectedBT == false && isConnectedMjm == true){
                 break;
             }
         }
+        intNumber = [NSNumber numberWithInt:5];
+        [self performSelectorOnMainThread:@selector(updateUILabel:) withObject:intNumber waitUntilDone:YES];
     }
     
     // 连接上新的序列号之后
     // todo: 把isConnectedBT改为false
-    if(isConnectedBT == true && serialWritten == true && isConnectedMjm == true){
+    if(isConnectedBT == false && serialWritten == true && isConnectedMjm == true){
         // 再次确认魔棒状态
         NSData *enterQuery_second = [self toHexEnterQueryStatusCommandline];
         [blue writeChar:enterQuery_second];
@@ -183,6 +278,8 @@ NSString *targetBluetoothName = @"mjm-";
                 break;
             }
         }
+        intNumber = [NSNumber numberWithInt:6];
+        [self performSelectorOnMainThread:@selector(updateUILabel:) withObject:intNumber waitUntilDone:YES];
         confirmState = false;
         
         // 比对确认新的序列号是否成功，由于再确认逻辑中有等待阻塞，故开启线程
@@ -193,10 +290,12 @@ NSString *targetBluetoothName = @"mjm-";
                 break;
             }
         }
+        intNumber = [NSNumber numberWithInt:7];
+        [self performSelectorOnMainThread:@selector(updateUILabel:) withObject:intNumber waitUntilDone:YES];
         // 结果反馈
         if(reconfirmResult){
             // 序列号比对成功
-            NSString *str = @"序列号写入成功\n %@";
+            NSString *str = @"序列号写入成功\n";
             
             UIAlertController *alertVc = [UIAlertController alertControllerWithTitle:@"提示" message:str preferredStyle:UIAlertControllerStyleAlert];
             [alertVc addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:^(UIAlertAction * _Nonnull action) {
@@ -210,7 +309,7 @@ NSString *targetBluetoothName = @"mjm-";
             [self presentViewController:alertVc animated:YES completion:nil];
         }else{
             // 序列号比对失败
-            NSString *str = @"序列号写入失败\n %@";
+            NSString *str = @"序列号写入失败\n";
             
             UIAlertController *alertVc = [UIAlertController alertControllerWithTitle:@"提示" message:str preferredStyle:UIAlertControllerStyleAlert];
             [alertVc addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:^(UIAlertAction * _Nonnull action) {
@@ -243,11 +342,11 @@ NSString *targetBluetoothName = @"mjm-";
     unsigned int fifthNum    = 0;//红外传感器读取到的低位值
     for (int i = 0; i < loopCount; i++) {
         // Debug模式下，Midi报文的数据意义
-        firstNum   = nsdata_bytes[i*5 + 0];//标志头字节
+        firstNum  = nsdata_bytes[i*5 + 0];//标志头字节
         secondNum = nsdata_bytes[i*5 + 1];//按下抬起标志
         thirdNum  = nsdata_bytes[i*5 + 2];//按键位置
-        forthNum   = nsdata_bytes[i*5 + 3];//红外传感器读取到的高位值
-        fifthNum    = nsdata_bytes[i*5 + 4];//红外传感器读取到的低位值
+        forthNum  = nsdata_bytes[i*5 + 3];//红外传感器读取到的高位值
+        fifthNum  = nsdata_bytes[i*5 + 4];//红外传感器读取到的低位值
     }
     if(firstNum != 0x20)
         return false;
@@ -274,6 +373,7 @@ NSString *targetBluetoothName = @"mjm-";
         if(serialResponse == true){
             data_currentA = responsedFirstSegment;
             data_currentB = responsedSecondSegment;
+            break;
         }
     }
     serialResponse = false;
@@ -284,7 +384,7 @@ NSString *targetBluetoothName = @"mjm-";
     
     // log
     NSLog(@"Serial num: data_currentA:%@",data_currentA);
-    NSLog(@"Serial num: data_currentA:%@",data_currentB);
+    NSLog(@"Serial num: data_currentB:%@",data_currentB);
     NSLog(@"Serial num: data_previousA:%@",data_previousA);
     NSLog(@"Serial num: data_previousB:%@",data_previousB);
     
@@ -292,11 +392,12 @@ NSString *targetBluetoothName = @"mjm-";
     if(![data_previousA isEqual: data_currentA]){
         reconfirmResult = false;
     }
-    if(![data_previousB isEqual: data_currentB]){
+    else if(![data_previousB isEqual: data_currentB]){
         reconfirmResult = false;
     }
-    
-    reconfirmResult = true;
+    else{
+        reconfirmResult = true;
+    }
     responsedFirstSegment = nil;
     responsedSecondSegment = nil;
 }
@@ -305,23 +406,22 @@ NSString *targetBluetoothName = @"mjm-";
     // 生成新序列号
     unsigned char data[5]= {};
     
-    NSString *serialFirstNum = [_codeNum substringWithRange:NSMakeRange(0, 1)];
+    NSString *serialFirstNum  = [_codeNum substringWithRange:NSMakeRange(0, 1)];
     NSString *serialSecondNum = [_codeNum substringWithRange:NSMakeRange(1, 1)];
-    NSString *serialThirdNum = [_codeNum substringWithRange:NSMakeRange(2, 1)];
+    NSString *serialThirdNum  = [_codeNum substringWithRange:NSMakeRange(2, 1)];
     NSString *serialFourthNum = [_codeNum substringWithRange:NSMakeRange(3, 1)];
     
-    int firstNum = (int)strtol("11", NULL, 16);
-    int secondNum = (int)strtol((char *)[serialFirstNum UTF8String], NULL, 16);
-    int thirdNum = (int)strtol((char *)[serialSecondNum UTF8String], NULL, 16);
-    int forthNum = (int)strtol((char *)[serialThirdNum UTF8String], NULL, 16);
-    int fifthNum = (int)strtol((char *)[serialFourthNum UTF8String], NULL, 16);
+
+    int serialFirstNum_asciiCode  = [serialFirstNum  characterAtIndex : 0];
+    int serialSecondNum_asciiCode = [serialSecondNum characterAtIndex : 0];
+    int serialThirdNum_asciiCode  = [serialThirdNum  characterAtIndex : 0];
+    int serialFourthNum_asciiCode = [serialFourthNum characterAtIndex : 0];
     
-    // 转换为ASCII码
-    int ASCII_NUM_offset = 0x30;
-    secondNum = secondNum + ASCII_NUM_offset;
-    thirdNum = thirdNum + ASCII_NUM_offset;
-    forthNum = forthNum + ASCII_NUM_offset;
-    fifthNum = fifthNum + ASCII_NUM_offset;
+    int firstNum  = (int)strtol("11", NULL, 16);
+    int secondNum = serialFirstNum_asciiCode;
+    int thirdNum  = serialSecondNum_asciiCode;
+    int forthNum  = serialThirdNum_asciiCode;
+    int fifthNum  = serialFourthNum_asciiCode;
     
     printf("%X-%X-%X-%X-%X\n",firstNum,secondNum,thirdNum,forthNum,fifthNum);
     data[0] = (char)firstNum;
@@ -339,23 +439,21 @@ NSString *targetBluetoothName = @"mjm-";
     // 生成新序列号
     unsigned char data[5]= {};
     
-    NSString *serialFirstNum = [_codeNum substringWithRange:NSMakeRange(4, 1)];
+    NSString *serialFirstNum  = [_codeNum substringWithRange:NSMakeRange(4, 1)];
     NSString *serialSecondNum = [_codeNum substringWithRange:NSMakeRange(5, 1)];
-    NSString *serialThirdNum = [_codeNum substringWithRange:NSMakeRange(6, 1)];
+    NSString *serialThirdNum  = [_codeNum substringWithRange:NSMakeRange(6, 1)];
     NSString *serialFourthNum = [_codeNum substringWithRange:NSMakeRange(7, 1)];
     
-    int firstNum = (int)strtol("11", NULL, 16);
-    int secondNum = (int)strtol((char *)[serialFirstNum UTF8String], NULL, 16);
-    int thirdNum = (int)strtol((char *)[serialSecondNum UTF8String], NULL, 16);
-    int forthNum = (int)strtol((char *)[serialThirdNum UTF8String], NULL, 16);
-    int fifthNum = (int)strtol((char *)[serialFourthNum UTF8String], NULL, 16);
+    int serialFirstNum_asciiCode  = [serialFirstNum  characterAtIndex : 0];
+    int serialSecondNum_asciiCode = [serialSecondNum characterAtIndex : 0];
+    int serialThirdNum_asciiCode  = [serialThirdNum  characterAtIndex : 0];
+    int serialFourthNum_asciiCode = [serialFourthNum characterAtIndex : 0];
     
-    // 转换为ASCII码
-    int ASCII_NUM_offset = 0x30;
-    secondNum = secondNum + ASCII_NUM_offset;
-    thirdNum = thirdNum + ASCII_NUM_offset;
-    forthNum = forthNum + ASCII_NUM_offset;
-    fifthNum = fifthNum + ASCII_NUM_offset;
+    int firstNum  = (int)strtol("11", NULL, 16);
+    int secondNum = serialFirstNum_asciiCode;
+    int thirdNum  = serialSecondNum_asciiCode;
+    int forthNum  = serialThirdNum_asciiCode;
+    int fifthNum  = serialFourthNum_asciiCode;
     
     printf("%X-%X-%X-%X-%X\n",firstNum,secondNum,thirdNum,forthNum,fifthNum);
     data[0] = (char)firstNum;

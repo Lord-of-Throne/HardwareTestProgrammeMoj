@@ -18,6 +18,7 @@
 
 @end
 
+int connectedStatus = 0;
 
 @implementation MojoyBluetoothMgr
 #pragma mark - Init method
@@ -53,6 +54,7 @@
 - (void)stopScan{
     [self.centralMgr stopScan];
     [self.centralMgr cancelPeripheralConnection:_discoveredPeripheral];
+    connectedStatus = 0;
 }
 
 - (void)connectBlueTooth{
@@ -121,6 +123,7 @@
         //Discovering all of the characteristics of a service,回调didDiscoverCharacteristicsForService
         [s.peripheral discoverCharacteristics:nil forService:s];
     }
+
 }
 
 //获取特征后的回调
@@ -134,15 +137,13 @@
     for (CBCharacteristic *c in service.characteristics)
     {
         NSLog(@"c.properties:%lu",(unsigned long)c.properties) ;
-        //Subscribing to a Characteristic’s Value 订阅
+        // Subscribing to a Characteristic’s Value 订阅
         [peripheral setNotifyValue:YES forCharacteristic:c];
         // read the characteristic’s value，回调didUpdateValueForCharacteristic
         [peripheral readValueForCharacteristic:c];
         _writeCharacteristic = c;
     }
-
-    // 订阅特征值后，发出连接成功的通知
-    [[NSNotificationCenter defaultCenter] postNotificationName:@"blueConnectSuccess" object:nil];
+    connectedStatus = 1;
 }
 
 //订阅的特征值有新的数据时回调
@@ -153,6 +154,7 @@
     }
     
     [peripheral readValueForCharacteristic:characteristic];
+
 }
 
 // 获取到特征的值时回调
@@ -164,6 +166,12 @@
     NSUInteger loopCount = len / 5;
     const unsigned char *nsdata_bytes = (unsigned char*)[midiData bytes];
     
+    // 接收到第一个数据后，认定链接成功，发出连接成功的通知
+    if(connectedStatus == 1){
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"blueConnectSuccess" object:nil];
+        connectedStatus = 0;
+    }
+
     [[NSNotificationCenter defaultCenter]postNotificationName:@"blueReciveSuccess" object:@{@"reciveData":midiData}];
     
 //    for (int i = 0; i < loopCount; i++) {
